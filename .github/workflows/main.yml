@@ -1,0 +1,152 @@
+name: Build MUHANNAD OS ISO
+
+# The build does NOT start by itself when you upload files.
+# Start it manually: Actions tab > "Build MUHANNAD OS ISO" > Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      snapshot:
+        description: "Optional Debian snapshot timestamp (e.g. 20261110T000000Z) to pin packages. Leave empty for latest bookworm."
+        required: false
+        default: ""
+      boot_wait:
+        description: "Seconds to wait before the boot screenshot (empty = automatic)"
+        required: false
+        default: ""
+  push:
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash   # bash -eo pipefail, so failures before "| tee" are not hidden
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static:
+    name: Static checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y shellcheck python3-yaml
+      - name: Generate assets and run static tests
+        run: |
+          python3 scripts/gen-assets.py
+          python3 tests/static_check.py
+      - name: Lint shell scripts (syntax blocking, shellcheck advisory)
+        run: bash scripts/lint.sh
+
+  build:
+    name: Build, verify and boot-test ISO
+    needs: static
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space on runner
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          df -h /
+
+      - name: Fail fast - check every package name exists in Debian 12
+        run: |
+          docker run --rm -e DEBIAN_FRONTEND=noninteractive -v "$PWD":/work -w /work debian:bookworm bash -euo pipefail -c '
+            apt-get update -qq
+            CHECK_ADD_COMPONENTS=1 bash scripts/check-packages.sh'
+
+      - name: Build ISO (Debian 12 container, privileged for chroot mounts)
+        env:
+          SNAPSHOT: ${{ github.event.inputs.snapshot }}
+        run: |
+          docker run --rm --privileged \
+            -e DEBIAN_FRONTEND=noninteractive -e LANG=C.UTF-8 -e SNAPSHOT="$SNAPSHOT" \
+            -v "$PWD":/work -w /work debian:bookworm bash -euxo pipefail -c '
+              apt-get update
+              apt-get install -y --no-install-recommends \
+                live-build debootstrap xorriso squashfs-tools mtools dosfstools \
+                syslinux syslinux-common syslinux-utils isolinux \
+                grub-efi-amd64-bin grub-pc-bin \
+                python3 python3-yaml ca-certificates gnupg debian-archive-keyring git
+              git config --global --add safe.directory /work
+              bash scripts/build.sh'
+
+      - name: Take ownership of build output
+        run: sudo chown -R "$USER":"$USER" release || true
+
+      - name: Show release files
+        run: ls -lh release/ && cat release/SHA256SUMS release/BUILD-INFO.txt
+
+      - name: Verify ISO (checksum and structure)
+        run: |
+          sudo apt-get update && sudo apt-get install -y xorriso
+          bash scripts/verify-iso.sh release/muhannad-os-1.0-amd64.iso | tee verify-iso.log
+
+      - name: Enable KVM if the runner offers it
+        run: |
+          if [ -e /dev/kvm ]; then
+            echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+            sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm || true
+            echo "KVM available"
+          else
+            echo "No /dev/kvm: boot test will use slow software emulation (TCG)"
+          fi
+
+      - name: UEFI boot test in QEMU (disposable virtual disk only)
+        env:
+          WAIT: ${{ github.event.inputs.boot_wait }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y qemu-system-x86 qemu-utils ovmf socat
+          mkdir -p test-output
+          sudo -E bash scripts/qemu-smoke-test.sh release/muhannad-os-1.0-amd64.iso test-output | tee test-output/boot-test.log
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "## MUHANNAD OS build"
+            echo '```'; cat release/SHA256SUMS 2>/dev/null || echo "no ISO produced"; echo '```'
+            echo "### ISO verification"; echo '```'; cat verify-iso.log 2>/dev/null || echo "not run"; echo '```'
+            echo "### Boot test (heuristic - view final.png in the artifact)"; echo '```'; cat test-output/boot-test.log 2>/dev/null || echo "not run"; echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload ISO, checksums, logs and boot screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: muhannad-os-iso
+          path: |
+            release/*
+            test-output/*.png
+            test-output/boot-test.log
+            verify-iso.log
+            build.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  release:
+    name: Publish GitHub Release (only for v* tags)
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: muhannad-os-iso
+          path: out
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            out/release/muhannad-os-1.0-amd64.iso
+            out/release/SHA256SUMS
+            out/release/BUILD-INFO.txt
