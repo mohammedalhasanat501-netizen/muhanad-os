@@ -1,0 +1,25 @@
+#!/bin/sh
+# READ-ONLY dual-boot preflight. Never writes to disks or EFI variables.
+set -u
+echo "== Firmware mode =="
+[ -d /sys/firmware/efi ] && echo "UEFI: yes" || echo "UEFI: NO (legacy BIOS). Dual boot with a UEFI Windows is NOT supported in this mode."
+echo; echo "== Disks / partitions =="
+lsblk -o NAME,SIZE,TYPE,FSTYPE,PARTTYPENAME,LABEL,MOUNTPOINTS 2>/dev/null
+echo; echo "== EFI System Partitions =="
+lsblk -rno NAME,PARTTYPE 2>/dev/null | awk 'tolower($2)=="c12a7328-f81f-11d2-ba4b-00a0c93ec93b"{print "/dev/"$1}'
+echo; echo "== Windows (NTFS) / BitLocker =="
+for d in $(lsblk -rno PATH,TYPE | awk '$2=="part"{print $1}'); do
+  t=$(blkid -o value -s TYPE "$d" 2>/dev/null || true)
+  case "$t" in
+    ntfs) echo "$d: NTFS (possible Windows data/system)";;
+    BitLocker|bitlocker) echo "$d: BITLOCKER ENCRYPTED. Have your recovery key ready. Do NOT modify this partition.";;
+  esac
+done
+echo; echo "== Existing UEFI boot entries (read-only) =="
+efibootmgr -v 2>/dev/null || echo "efibootmgr not available or no EFI variables."
+echo; echo "== Unallocated space =="
+for disk in $(lsblk -dno PATH,TYPE | awk '$2=="disk"{print $1}'); do
+  echo "-- $disk"; parted -s "$disk" unit GiB print free 2>/dev/null | grep -i "free space" || echo "  (none reported)"
+done
+echo; echo "In the installer choose MANUAL partitioning, create partitions ONLY in free space,"
+echo "mount the EXISTING EFI partition at /boot/efi WITHOUT the 'format' option."

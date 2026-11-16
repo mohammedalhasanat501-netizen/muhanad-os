@@ -1,0 +1,16 @@
+# live-build working dirs and outputs
+chroot/
+binary/
+cache/
+.build/
+config/binary
+config/bootstrap
+config/chroot
+config/common
+config/source
+*.iso
+*.log
+live-image-*
+release/
+test-output/
+__pycache__/

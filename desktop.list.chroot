@@ -1,0 +1,8 @@
+gdm3 gnome-shell gnome-session gnome-control-center gnome-settings-daemon
+gnome-shell-extension-dashtodock gnome-shell-extension-appindicator gnome-tweaks
+gnome-shell-extension-prefs xdg-desktop-portal-gnome xdg-desktop-portal-gtk
+nautilus gnome-terminal gnome-text-editor eog totem gnome-software gnome-system-monitor
+file-roller gnome-screenshot gnome-calculator gnome-disk-utility
+papirus-icon-theme gnome-themes-extra adwaita-icon-theme dconf-cli
+firefox-esr
+xdg-user-dirs-gtk

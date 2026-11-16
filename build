@@ -1,0 +1,4 @@
+#!/bin/bash
+# bash + pipefail so a failing `lb build` is NOT hidden by tee
+set -euo pipefail
+lb build noauto "${@}" 2>&1 | tee build.log

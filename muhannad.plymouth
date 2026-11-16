@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=MUHANNAD
+Description=Pure black background with a single centered white logo
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/muhannad
+ScriptFile=/usr/share/plymouth/themes/muhannad/muhannad.script

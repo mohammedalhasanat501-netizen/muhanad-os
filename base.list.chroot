@@ -1,0 +1,16 @@
+# Boot / firmware / Secure Boot chain (installed system)
+grub-efi-amd64 grub-efi-amd64-signed shim-signed os-prober efibootmgr
+plymouth plymouth-themes
+firmware-linux firmware-misc-nonfree firmware-iwlwifi firmware-realtek firmware-atheros firmware-amd-graphics intel-microcode amd64-microcode
+# Hardware / services
+network-manager network-manager-gnome wpasupplicant wireless-regdb iw rfkill
+bluez libspa-0.2-bluetooth pipewire pipewire-pulse wireplumber alsa-utils
+upower power-profiles-daemon udisks2 gvfs gvfs-backends gvfs-fuse
+xserver-xorg xserver-xorg-input-libinput xwayland mesa-vulkan-drivers pciutils usbutils
+# Locale / console / identity
+locales console-setup keyboard-configuration xdg-user-dirs
+# Updates
+unattended-upgrades apt-listchanges
+# Security
+ufw apparmor apparmor-profiles polkitd pkexec gnome-keyring
+sudo fonts-inter fonts-firacode

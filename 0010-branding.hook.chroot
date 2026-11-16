@@ -1,0 +1,34 @@
+#!/bin/sh
+set -e
+# --- Identity (written here, not shipped via includes, so base-files cannot overwrite it) ---
+cat > /usr/lib/os-release <<'OSR'
+PRETTY_NAME="MUHANNAD OS 1.0 (based on Debian 12)"
+NAME="MUHANNAD OS"
+VERSION_ID="1.0"
+VERSION="1.0"
+ID=muhannad
+ID_LIKE=debian
+HOME_URL="https://github.com/CHANGE-ME/muhannad-os"
+OSR
+ln -sf ../usr/lib/os-release /etc/os-release
+
+# --- Boot splash ---
+plymouth-set-default-theme -R muhannad
+
+# --- Calamares overrides (installed after calamares-settings-debian so ours win) ---
+mkdir -p /etc/calamares/modules
+cp /usr/share/muhannad/calamares/settings.conf /etc/calamares/settings.conf
+cp /usr/share/muhannad/calamares/modules/*.conf /etc/calamares/modules/
+cp /usr/share/plymouth/themes/muhannad/logo.png /etc/calamares/branding/muhannad/logo.png
+cp /usr/share/backgrounds/muhannad/muhannad-dark.png /etc/calamares/branding/muhannad/welcome.png
+
+# --- GDM greeter look ---
+if [ -f /etc/gdm3/greeter.dconf-defaults ]; then
+  cat /usr/share/muhannad/greeter.dconf-defaults >> /etc/gdm3/greeter.dconf-defaults
+fi
+
+# --- Desktop defaults: make sure the 'local' dconf db is part of the user profile ---
+mkdir -p /etc/dconf/profile
+[ -f /etc/dconf/profile/user ] || printf 'user-db:user\nsystem-db:local\n' > /etc/dconf/profile/user
+grep -q 'system-db:local' /etc/dconf/profile/user || echo 'system-db:local' >> /etc/dconf/profile/user
+dconf update

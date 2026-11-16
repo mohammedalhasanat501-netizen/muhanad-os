@@ -1,0 +1,25 @@
+---
+componentName: muhannad
+welcomeStyleCalamares: true
+strings:
+  productName: "MUHANNAD OS"
+  shortProductName: "MUHANNAD"
+  version: "1.0"
+  shortVersion: "1.0"
+  versionedName: "MUHANNAD OS 1.0"
+  shortVersionedName: "MUHANNAD 1.0"
+  bootloaderEntryName: "MUHANNAD OS"
+  productUrl: "https://github.com/CHANGE-ME/muhannad-os"
+  supportUrl: "https://github.com/CHANGE-ME/muhannad-os/issues"
+  releaseNotesUrl: "https://github.com/CHANGE-ME/muhannad-os/releases"
+images:
+  productLogo: "logo.png"
+  productIcon: "logo.png"
+  productWelcome: "welcome.png"
+style:
+  sidebarBackground: "#050b1f"
+  sidebarText: "#ffffff"
+  sidebarTextSelect: "#8ab4ff"
+  sidebarTextHighlight: "#0a1a4a"
+slideshow: "show.qml"
+slideshowAPI: 2

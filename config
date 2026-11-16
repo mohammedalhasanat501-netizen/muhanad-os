@@ -1,0 +1,18 @@
+#!/bin/bash
+# live-build configuration for MUHANNAD OS (Debian 12 "bookworm" base)
+set -euo pipefail
+lb config noauto \
+  --distribution bookworm \
+  --architectures amd64 \
+  --archive-areas "main contrib non-free non-free-firmware" \
+  --binary-images iso-hybrid \
+  --bootloaders "grub-efi,syslinux" \
+  --debian-installer none \
+  --iso-application "MUHANNAD OS" \
+  --iso-publisher "MUHANNAD OS Project" \
+  --iso-volume "MUHANNAD_OS" \
+  --bootappend-live "boot=live components quiet splash plymouth.ignore-serial-consoles" \
+  --apt-recommends false \
+  --security true --updates true \
+  --checksums sha256 \
+  "${@}"

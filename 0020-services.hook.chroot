@@ -1,0 +1,7 @@
+#!/bin/sh
+set -e
+for u in NetworkManager bluetooth gdm3 ufw; do
+  systemctl enable "$u" || echo "WARNING: could not enable $u"
+done
+# Firewall: set enabled flag in config (cannot start iptables inside a chroot). Debian ufw defaults: deny incoming, allow outgoing.
+if [ -f /etc/ufw/ufw.conf ]; then sed -i 's/^ENABLED=.*/ENABLED=yes/' /etc/ufw/ufw.conf; fi
